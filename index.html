@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Estate</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div ng-app="myApp" ng-controller="RealEstateController">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group mt-3">
+                        <label for="">Tiền vay</label>
+                        <input class="form-control" type="text" awnum="price" ng-model="config.tien_vay" ng-change="export()">
+                    </div>
+                    <div class="form-group mt-3">
+                        <label for="">Lãi xuất ưu đãi</label>
+                        <input class="form-control" type="text" awnum="profit" ng-model="config.lai_xuat_uu_dai" ng-change="export()">
+                    </div>
+                    <div class="form-group mt-3">
+                        <label for="">Lãi xuất sau ưu đãi</label>
+                        <input class="form-control" type="text" awnum="profit" ng-model="config.lai_xuat_sau_uu_dai" ng-change="export()">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group mt-3">
+                        <label for="">Số tháng ưu đãi</label>
+                        <input class="form-control" type="text" ng-model="config.thang_uu_dai" ng-change="export()">
+                    </div>
+                    <div class="form-group mt-3">
+                        <label for="">Số tháng phải trả</label>
+                        <input class="form-control" type="text" ng-model="config.thang_phai_tra" ng-change="export()">
+                    </div>
+                </div>
+            </div>
+            <table class="table table-responsive mt-5" ng-if="months.length">
+                <tr>
+                    <th>Tháng</th>
+                    <th>Gốc đầu kỳ</th>
+                    <th>Gốc trả hàng tháng</th>
+                    <th style="width: 15%">Lãi xuất</th>
+                    <th>Lãi trả hàng tháng</th>
+                    <th>Tiền phải trả hàng tháng</th>
+                    <th>Tiền trả theo năm</th>
+                </tr>
+                <tr class="bg-danger text-white">
+                    <td colspan="4">Tổng</td>
+                    <td>{{ formatCurrency(config.tong_lai) }} đ</td>
+                    <td>{{ formatCurrency(config.tong_tien_phai_tra) }} đ</td>
+                    <td></td>
+                </tr>
+                <tr ng-repeat="month in months track by $index" class="{{ ($index + 1) % 12 == 0 ? 'bg-warning' : ''}}">
+                    <td>{{ month.month }}</td>
+                    <td>{{ formatCurrency(month.tien_goc) }} đ</td>
+                    <td>{{ formatCurrency(month.goc_tra_hang_thang) }} đ</td>
+                    <td>
+                        {{ month.lai_xuat_hang_thang }}%
+                    </td>
+                    <td>{{ formatCurrency(month.lai_tra_hang_thang) }} đ</td>
+                    <td>{{ formatCurrency(month.tien_tra_hang_thang) }} đ</td>
+                    <td>{{ formatCurrency(month.tien_tra_theo_nam) }} đ</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.2/angular.min.js" integrity="sha512-7oYXeK0OxTFxndh0erL8FsjGvrl2VMDor6fVqzlLGfwOQQqTbYsGPv4ZZ15QHfSk80doyaM0ZJdvkyDcVO7KFA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="/js/dynamic-number.min.js"></script>
+    <script>
+        const App = angular.module('myApp', ['dynamicNumber']);
+        App.config(['dynamicNumberStrategyProvider', function (dynamicNumberStrategyProvider) {
+            dynamicNumberStrategyProvider.addStrategy('price', {
+                numInt: 14,
+                numFract: 0,
+                numSep: ',',
+                numThousand: true,
+                numFixed: true
+            });
+            dynamicNumberStrategyProvider.addStrategy('profit', {
+                numInt: 2,
+                numFract: 1,
+                numSep: ',',
+                numThousand: true,
+                numFixed: true
+            });
+        }]);
+        App.controller('RealEstateController', function ($scope, $http, $rootScope) {
+            $scope.config = {
+                tien_vay: 1000000000,
+                lai_xuat_uu_dai: 5.9,
+                lai_xuat_sau_uu_dai: 10,
+                thang_uu_dai: 6,
+                thang_phai_tra: 240,
+                tong_lai: 0,
+                tong_tien_phai_tra: 0
+            }
+
+            $scope.months = [];
+
+
+            $scope.export = function () {
+                $scope.config.tong_lai = 0;
+                $scope.config.tong_tien_phai_tra = 0;
+                $scope.months = [];
+                if ($scope.config.thang_phai_tra && $scope.config.tien_vay && $scope.config.lai_xuat_sau_uu_dai) {
+                    let tienVayConLai = $scope.config.tien_vay;
+                    let gocHangThang = Math.floor($scope.config.tien_vay / $scope.config.thang_phai_tra);
+                    let tienTraTheoNam = 0;
+                    for (let i = 0; i < $scope.config.thang_phai_tra; i++) {
+                        let month = {
+                            month: '',
+                            tien_goc: 0,
+                            goc_tra_hang_thang: 0,
+                            lai_tra_hang_thang: 0,
+                            lai_xuat_hang_thang: 0,
+                            tien_tra_hang_thang: 0,
+                            tien_tra_theo_nam: 0,
+                        };
+                        if ((i + 1) % 12 == 1) {
+                            tienTraTheoNam = 0;
+                        }
+                        month.month = 'N-' + (Math.ceil((i + 1) / 12)) + ' T-' + (((i + 1) % 12) == 0 ? 12 : ((i + 1) % 12));
+                        month.tien_goc = tienVayConLai;
+                        month.goc_tra_hang_thang = gocHangThang;
+                        if (i < $scope.config.thang_uu_dai) {
+                            month.lai_tra_hang_thang = Math.floor(month.tien_goc * $scope.config.lai_xuat_uu_dai / 1200);
+                            month.lai_xuat_hang_thang = $scope.config.lai_xuat_uu_dai;
+                        } else {
+                            month.lai_tra_hang_thang = Math.floor(month.tien_goc * $scope.config.lai_xuat_sau_uu_dai / 1200);
+                            month.lai_xuat_hang_thang = $scope.config.lai_xuat_sau_uu_dai;
+                        }
+                        month.tien_tra_hang_thang = month.goc_tra_hang_thang + month.lai_tra_hang_thang;
+                        tienTraTheoNam += month.tien_tra_hang_thang;
+                        month.tien_tra_theo_nam = tienTraTheoNam;
+    
+                        $scope.config.tong_lai += month.lai_tra_hang_thang;
+                        $scope.config.tong_tien_phai_tra += month.tien_tra_hang_thang;
+                        $scope.months.push(month);
+    
+                        tienVayConLai -= month.goc_tra_hang_thang;
+                    }
+                }
+            }
+
+            $scope.formatCurrency = function(price, desSep = ',', groupSep = '.', number = 0) {
+                if (price != parseFloat(price)) {
+                    price = 0;
+                }
+                var newstr = '';
+                price = parseFloat(price);
+                var p = price.toFixed(number).split(".");
+                var chars = p[0].split("").reverse();
+                var count = 0;
+                for (x in chars) {
+                    count++;
+                    if (count % 3 == 1 && count != 1) {
+                        newstr = chars[x] + groupSep + newstr;
+                    } else {
+                        newstr = chars[x] + newstr;
+                    }
+                }
+
+                if (p.length > 1) {
+                    newstr += desSep + p[1];
+                } else if (number > 0) {
+                    newstr += desSep;
+                    for (let i = 0; i < number; i++) {
+                        newstr += '0';
+                    }
+                }
+
+                return newstr;
+            }
+
+            $scope.export();
+        });
+    </script>
+</body>
+</html>
