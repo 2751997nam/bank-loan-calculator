@@ -35,6 +35,10 @@
                         <label for="">Số tháng phải trả</label>
                         <input class="form-control" type="text" ng-model="config.thang_phai_tra" ng-change="export()">
                     </div>
+                    <div class="form-group mt-3">
+                        <label for="">Tiền trả hàng tháng</label>
+                        <input class="form-control" type="text" awnum="price" ng-model="config.fixed_monthly_payment" ng-change="export()">
+                    </div>
                 </div>
             </div>
             <table class="table table-responsive mt-5" ng-if="months.length">
@@ -96,7 +100,8 @@
                 thang_uu_dai: 6,
                 thang_phai_tra: 240,
                 tong_lai: 0,
-                tong_tien_phai_tra: 0
+                tong_tien_phai_tra: 0,
+                fixed_monthly_payment: 15000000
             }
 
             $scope.months = [];
@@ -125,7 +130,6 @@
                         }
                         month.month = 'N-' + (Math.ceil((i + 1) / 12)) + ' T-' + (((i + 1) % 12) == 0 ? 12 : ((i + 1) % 12));
                         month.tien_goc = tienVayConLai;
-                        month.goc_tra_hang_thang = gocHangThang;
                         if (i < $scope.config.thang_uu_dai) {
                             month.lai_tra_hang_thang = Math.floor(month.tien_goc * $scope.config.lai_xuat_uu_dai / 1200);
                             month.lai_xuat_hang_thang = $scope.config.lai_xuat_uu_dai;
@@ -133,15 +137,30 @@
                             month.lai_tra_hang_thang = Math.floor(month.tien_goc * $scope.config.lai_xuat_sau_uu_dai / 1200);
                             month.lai_xuat_hang_thang = $scope.config.lai_xuat_sau_uu_dai;
                         }
-                        month.tien_tra_hang_thang = month.goc_tra_hang_thang + month.lai_tra_hang_thang;
+                        month.lai_tra_hang_thang = month.lai_tra_hang_thang > 0 ? month.lai_tra_hang_thang : 0;
+                        if ($scope.config.fixed_monthly_payment) {
+                            month.tien_tra_hang_thang = $scope.config.fixed_monthly_payment;
+                            if (month.tien_tra_hang_thang > month.lai_tra_hang_thang) {
+                                month.goc_tra_hang_thang = month.tien_tra_hang_thang - month.lai_tra_hang_thang;
+                            } else {
+                                month.goc_tra_hang_thang = 0;
+                                tienVayConLai += month.lai_tra_hang_thang - month.tien_tra_hang_thang;
+                            }
+                        } else {
+                            month.goc_tra_hang_thang = gocHangThang;
+                            month.tien_tra_hang_thang = month.goc_tra_hang_thang + month.lai_tra_hang_thang;
+                        }
+                        tienVayConLai -= month.goc_tra_hang_thang;
+                        
                         tienTraTheoNam += month.tien_tra_hang_thang;
                         month.tien_tra_theo_nam = tienTraTheoNam;
     
                         $scope.config.tong_lai += month.lai_tra_hang_thang;
                         $scope.config.tong_tien_phai_tra += month.tien_tra_hang_thang;
                         $scope.months.push(month);
-    
-                        tienVayConLai -= month.goc_tra_hang_thang;
+                        if (tienVayConLai < 0) {
+                            break;
+                        }
                     }
                 }
             }
