@@ -139,12 +139,17 @@
                         }
                         month.lai_tra_hang_thang = month.lai_tra_hang_thang > 0 ? month.lai_tra_hang_thang : 0;
                         if ($scope.config.fixed_monthly_payment) {
-                            month.tien_tra_hang_thang = $scope.config.fixed_monthly_payment;
-                            if (month.tien_tra_hang_thang > month.lai_tra_hang_thang) {
-                                month.goc_tra_hang_thang = month.tien_tra_hang_thang - month.lai_tra_hang_thang;
+                            if ($scope.config.fixed_monthly_payment > (tienVayConLai + month.lai_tra_hang_thang)) {
+                                month.tien_tra_hang_thang = tienVayConLai + month.lai_tra_hang_thang;
+                                month.goc_tra_hang_thang = tienVayConLai;
                             } else {
-                                month.goc_tra_hang_thang = 0;
-                                tienVayConLai += month.lai_tra_hang_thang - month.tien_tra_hang_thang;
+                                month.tien_tra_hang_thang = $scope.config.fixed_monthly_payment;
+                                if (month.tien_tra_hang_thang > month.lai_tra_hang_thang) {
+                                    month.goc_tra_hang_thang = month.tien_tra_hang_thang - month.lai_tra_hang_thang;
+                                } else {
+                                    month.goc_tra_hang_thang = 0;
+                                    tienVayConLai += month.lai_tra_hang_thang - month.tien_tra_hang_thang;
+                                }
                             }
                         } else {
                             month.goc_tra_hang_thang = gocHangThang;
@@ -158,7 +163,7 @@
                         $scope.config.tong_lai += month.lai_tra_hang_thang;
                         $scope.config.tong_tien_phai_tra += month.tien_tra_hang_thang;
                         $scope.months.push(month);
-                        if (tienVayConLai < 0) {
+                        if (tienVayConLai <= 0) {
                             break;
                         }
                     }
