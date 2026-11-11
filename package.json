@@ -1,0 +1,10 @@
+{
+  "name": "bank-loan-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bank loan calculator",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

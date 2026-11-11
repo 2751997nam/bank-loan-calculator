@@ -25,6 +25,14 @@
                         <label for="">Lãi xuất sau ưu đãi</label>
                         <input class="form-control" type="text" awnum="profit" ng-model="config.lai_xuat_sau_uu_dai" ng-change="export()">
                     </div>
+                    <div class="form-group mt-3">
+                        <label for="">Phí tất toán (%)</label>
+                        <input class="form-control" type="text" awnum="profit" ng-model="config.phi_tat_toan" ng-change="export()">
+                    </div>
+                    <div class="form-group mt-3">
+                        <label for="">Phí tất toán tối thiểu</label>
+                        <input class="form-control" type="text" awnum="price" ng-model="config.phi_tat_toan_toi_thieu" ng-change="export()">
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group mt-3">
@@ -39,7 +47,20 @@
                         <label for="">Tiền trả hàng tháng</label>
                         <input class="form-control" type="text" awnum="price" ng-model="config.fixed_monthly_payment" ng-change="export()">
                     </div>
+                    <div class="form-group mt-3">
+                        <label for="">Khoản tất toán mong muốn</label>
+                        <input class="form-control" type="text" awnum="price" ng-model="config.tien_tat_toan_mong_muon" ng-change="export()">
+                    </div>
                 </div>
+            </div>
+            <div class="alert mt-4" ng-class="config.thang_tat_toan ? 'alert-success' : 'alert-secondary'" ng-if="config.tien_tat_toan_mong_muon">
+                <span ng-if="config.thang_tat_toan">
+                    Có thể tất toán sớm nhất vào <b>{{ config.thang_tat_toan.month }}</b>
+                    (sau khi trả kỳ này): tiền tất toán <b>{{ formatCurrency(config.thang_tat_toan.tien_tat_toan) }} đ</b>
+                    (gồm phí {{ formatCurrency(config.thang_tat_toan.phi_tat_toan) }} đ).
+                    Tổng đã trả nếu tất toán lúc này: <b>{{ formatCurrency(config.thang_tat_toan.tong_tra_neu_tat_toan) }} đ</b>.
+                </span>
+                <span ng-if="!config.thang_tat_toan">Không có tháng nào tiền tất toán nhỏ hơn hoặc bằng khoản mong muốn.</span>
             </div>
             <table class="table table-responsive mt-5" ng-if="months.length">
                 <tr>
@@ -50,14 +71,16 @@
                     <th>Lãi trả hàng tháng</th>
                     <th>Tiền phải trả hàng tháng</th>
                     <th>Tiền trả theo năm</th>
+                    <th>Phí tất toán</th>
+                    <th>Tiền tất toán</th>
                 </tr>
                 <tr class="bg-danger text-white">
                     <td colspan="4">Tổng</td>
                     <td>{{ formatCurrency(config.tong_lai) }} đ</td>
                     <td>{{ formatCurrency(config.tong_tien_phai_tra) }} đ</td>
-                    <td></td>
+                    <td colspan="3"></td>
                 </tr>
-                <tr ng-repeat="month in months track by $index" class="{{ ($index + 1) % 12 == 0 ? 'bg-warning' : ''}}">
+                <tr ng-repeat="month in months track by $index" class="{{ month === config.thang_tat_toan ? 'bg-success text-white' : (($index + 1) % 12 == 0 ? 'bg-warning' : '') }}">
                     <td>{{ month.month }}</td>
                     <td>{{ formatCurrency(month.tien_goc) }} đ</td>
                     <td>{{ formatCurrency(month.goc_tra_hang_thang) }} đ</td>
@@ -67,6 +90,8 @@
                     <td>{{ formatCurrency(month.lai_tra_hang_thang) }} đ</td>
                     <td>{{ formatCurrency(month.tien_tra_hang_thang) }} đ</td>
                     <td>{{ formatCurrency(month.tien_tra_theo_nam) }} đ</td>
+                    <td>{{ formatCurrency(month.phi_tat_toan) }} đ</td>
+                    <td>{{ formatCurrency(month.tien_tat_toan) }} đ</td>
                 </tr>
             </table>
         </div>
@@ -101,15 +126,49 @@
                 thang_phai_tra: 240,
                 tong_lai: 0,
                 tong_tien_phai_tra: 0,
-                fixed_monthly_payment: 15000000
+                fixed_monthly_payment: 15000000,
+                phi_tat_toan: 3,
+                phi_tat_toan_toi_thieu: 0,
+                tien_tat_toan_mong_muon: 0,
+                thang_tat_toan: null
+            }
+
+            // Chỉ lưu các ô nhập, không lưu các giá trị tính toán
+            const STORAGE_KEY = 'bank-loan-calculator-config';
+            const SAVED_FIELDS = [
+                'tien_vay', 'lai_xuat_uu_dai', 'lai_xuat_sau_uu_dai', 'thang_uu_dai', 'thang_phai_tra',
+                'fixed_monthly_payment', 'phi_tat_toan', 'phi_tat_toan_toi_thieu', 'tien_tat_toan_mong_muon'
+            ];
+
+            $scope.loadConfig = function () {
+                try {
+                    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+                    SAVED_FIELDS.forEach(function (field) {
+                        if (saved[field] !== undefined) {
+                            $scope.config[field] = saved[field];
+                        }
+                    });
+                } catch (e) {}
+            }
+
+            $scope.saveConfig = function () {
+                try {
+                    const data = {};
+                    SAVED_FIELDS.forEach(function (field) {
+                        data[field] = $scope.config[field];
+                    });
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                } catch (e) {}
             }
 
             $scope.months = [];
 
 
             $scope.export = function () {
+                $scope.saveConfig();
                 $scope.config.tong_lai = 0;
                 $scope.config.tong_tien_phai_tra = 0;
+                $scope.config.thang_tat_toan = null;
                 $scope.months = [];
                 if ($scope.config.thang_phai_tra && $scope.config.tien_vay && $scope.config.lai_xuat_sau_uu_dai) {
                     let tienVayConLai = $scope.config.tien_vay;
@@ -124,6 +183,8 @@
                             lai_xuat_hang_thang: 0,
                             tien_tra_hang_thang: 0,
                             tien_tra_theo_nam: 0,
+                            phi_tat_toan: 0,
+                            tien_tat_toan: 0,
                         };
                         if ((i + 1) % 12 == 1) {
                             tienTraTheoNam = 0;
@@ -162,6 +223,19 @@
     
                         $scope.config.tong_lai += month.lai_tra_hang_thang;
                         $scope.config.tong_tien_phai_tra += month.tien_tra_hang_thang;
+
+                        // Tất toán sau khi trả kỳ này: dư nợ còn lại + phí tất toán
+                        let duNo = tienVayConLai > 0 ? tienVayConLai : 0;
+                        month.phi_tat_toan = Math.floor(duNo * ($scope.config.phi_tat_toan || 0) / 100);
+                        if (duNo > 0) {
+                            month.phi_tat_toan = Math.max(month.phi_tat_toan, $scope.config.phi_tat_toan_toi_thieu || 0);
+                        }
+                        month.tien_tat_toan = duNo + month.phi_tat_toan;
+                        if ($scope.config.tien_tat_toan_mong_muon && !$scope.config.thang_tat_toan
+                            && month.tien_tat_toan <= $scope.config.tien_tat_toan_mong_muon) {
+                            month.tong_tra_neu_tat_toan = $scope.config.tong_tien_phai_tra + month.tien_tat_toan;
+                            $scope.config.thang_tat_toan = month;
+                        }
                         $scope.months.push(month);
                         if (tienVayConLai <= 0) {
                             break;
@@ -200,6 +274,7 @@
                 return newstr;
             }
 
+            $scope.loadConfig();
             $scope.export();
         });
     </script>
