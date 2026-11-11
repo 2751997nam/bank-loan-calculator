@@ -36,6 +36,13 @@
                 </div>
                 <div class="col-md-6">
                     <div class="form-group mt-3">
+                        <label for="">Hình thức trả lãi</label>
+                        <select class="form-select" ng-model="config.hinh_thuc_lai" ng-change="export()">
+                            <option value="du_no_giam_dan">Lãi theo dư nợ giảm dần</option>
+                            <option value="goc_ban_dau">Lãi theo gốc ban đầu</option>
+                        </select>
+                    </div>
+                    <div class="form-group mt-3">
                         <label for="">Số tháng ưu đãi</label>
                         <input class="form-control" type="text" ng-model="config.thang_uu_dai" ng-change="export()">
                     </div>
@@ -111,7 +118,7 @@
             });
             dynamicNumberStrategyProvider.addStrategy('profit', {
                 numInt: 2,
-                numFract: 1,
+                numFract: 2,
                 numSep: ',',
                 numThousand: true,
                 numFixed: true
@@ -130,6 +137,7 @@
                 phi_tat_toan: 3,
                 phi_tat_toan_toi_thieu: 0,
                 tien_tat_toan_mong_muon: 0,
+                hinh_thuc_lai: 'du_no_giam_dan',
                 thang_tat_toan: null
             }
 
@@ -137,7 +145,8 @@
             const STORAGE_KEY = 'bank-loan-calculator-config';
             const SAVED_FIELDS = [
                 'tien_vay', 'lai_xuat_uu_dai', 'lai_xuat_sau_uu_dai', 'thang_uu_dai', 'thang_phai_tra',
-                'fixed_monthly_payment', 'phi_tat_toan', 'phi_tat_toan_toi_thieu', 'tien_tat_toan_mong_muon'
+                'fixed_monthly_payment', 'phi_tat_toan', 'phi_tat_toan_toi_thieu', 'tien_tat_toan_mong_muon',
+                'hinh_thuc_lai'
             ];
 
             $scope.loadConfig = function () {
@@ -191,11 +200,13 @@
                         }
                         month.month = 'N-' + (Math.ceil((i + 1) / 12)) + ' T-' + (((i + 1) % 12) == 0 ? 12 : ((i + 1) % 12));
                         month.tien_goc = tienVayConLai;
+                        // Dư nợ giảm dần: tính lãi trên gốc còn lại; gốc ban đầu: luôn tính trên tiền vay
+                        let gocTinhLai = $scope.config.hinh_thuc_lai === 'goc_ban_dau' ? $scope.config.tien_vay : month.tien_goc;
                         if (i < $scope.config.thang_uu_dai) {
-                            month.lai_tra_hang_thang = Math.floor(month.tien_goc * $scope.config.lai_xuat_uu_dai / 1200);
+                            month.lai_tra_hang_thang = Math.floor(gocTinhLai * $scope.config.lai_xuat_uu_dai / 1200);
                             month.lai_xuat_hang_thang = $scope.config.lai_xuat_uu_dai;
                         } else {
-                            month.lai_tra_hang_thang = Math.floor(month.tien_goc * $scope.config.lai_xuat_sau_uu_dai / 1200);
+                            month.lai_tra_hang_thang = Math.floor(gocTinhLai * $scope.config.lai_xuat_sau_uu_dai / 1200);
                             month.lai_xuat_hang_thang = $scope.config.lai_xuat_sau_uu_dai;
                         }
                         month.lai_tra_hang_thang = month.lai_tra_hang_thang > 0 ? month.lai_tra_hang_thang : 0;
